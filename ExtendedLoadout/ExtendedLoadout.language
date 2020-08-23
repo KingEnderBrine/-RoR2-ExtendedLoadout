@@ -1,0 +1,10 @@
+﻿{
+	"en": {
+		"EXTENDED_LOADOUT_SKILL_DISABLED_NAME": "Disabled",
+		"EXTENDED_LOADOUT_SKILL_DISABLED_DESCRIPTION": "Extra skill will not be shown during a run"
+	},
+	"RU": {
+		"EXTENDED_LOADOUT_SKILL_DISABLED_NAME": "Выключен",
+		"EXTENDED_LOADOUT_SKILL_DISABLED_DESCRIPTION": "Доп. навык не будет показан в течение забега"
+	}
+}

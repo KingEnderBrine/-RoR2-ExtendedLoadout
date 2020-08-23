@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="set &quot;pluginsDir=C:\Users\Admin\Desktop\F\RoR2 Modding\RoR2\Risk of Rain 2\BepInEx\plugins&quot;&#xD;&#xA;if not exist &quot;%25pluginsDir%25&quot; exit&#xD;&#xA;&#xD;&#xA;set &quot;dir=%25pluginsDir%25\$(TargetName)&quot;&#xD;&#xA;if not exist &quot;%25dir%25&quot; mkdir &quot;%25dir%25&quot;&#xD;&#xA;xcopy /Y /D &quot;$(TargetPath)&quot; &quot;%25dir%25&quot;&#xD;&#xA;&#xD;&#xA;xcopy /Y /D &quot;$(ProjectDir)*.language&quot; &quot;%25dir%25&quot;" />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\CommonLibs\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\CommonLibs\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="ExtraSkillSlots">
+      <HintPath>..\..\CommonLibs\ExtraSkillSlots.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_Assembly-CSharp">
+      <HintPath>..\..\CommonLibs\MMHOOK_Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>..\..\CommonLibs\Mono.Cecil.dll</HintPath>
+    </Reference>
+    <Reference Include="MonoMod.RuntimeDetour">
+      <HintPath>..\..\CommonLibs\MonoMod.RuntimeDetour.dll</HintPath>
+    </Reference>
+    <Reference Include="MonoMod.Utils">
+      <HintPath>..\..\CommonLibs\MonoMod.Utils.dll</HintPath>
+    </Reference>
+    <Reference Include="R2API">
+      <HintPath>..\..\CommonLibs\R2API.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\CommonLibs\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\CommonLibs\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Networking">
+      <HintPath>..\..\CommonLibs\UnityEngine.Networking.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
