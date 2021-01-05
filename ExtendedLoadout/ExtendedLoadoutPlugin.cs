@@ -20,7 +20,7 @@ namespace ExtendedLoadout
     [R2APISubmoduleDependency(nameof(CommandHelper), nameof(LoadoutAPI))]
     [BepInDependency("com.KingEnderBrine.ExtraSkillSlots", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("com.bepis.r2api")]
-    [BepInPlugin("com.KingEnderBrine.ExtendedLoadout", "Extended Loadout", "2.0.0")]
+    [BepInPlugin("com.KingEnderBrine.ExtendedLoadout", "Extended Loadout", "2.0.1")]
     public class ExtendedLoadoutPlugin : BaseUnityPlugin
     {
         private static ExtendedLoadoutPlugin Instance { get; set; }
