@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using ExtraSkillSlots;
 using R2API;
 using R2API.Utils;
@@ -22,13 +23,21 @@ namespace ExtendedLoadout
     [R2APISubmoduleDependency(nameof(CommandHelper), nameof(LoadoutAPI))]
     [BepInDependency("com.KingEnderBrine.ExtraSkillSlots", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("com.bepis.r2api")]
-    [BepInPlugin("com.KingEnderBrine.ExtendedLoadout", "Extended Loadout", "1.0.0")]
+    [BepInPlugin("com.KingEnderBrine.ExtendedLoadout", "Extended Loadout", "1.1.0")]
     public class ExtendedLoadoutPlugin : BaseUnityPlugin
     {
-        public SkillDef DisabledSkill;
+        private static ConfigEntry<bool> Unsafe { get; set; }
+        private static ExtendedLoadoutPlugin Instance { get; set; }
+        private static ManualLogSource InstanceLogger => Instance?.Logger;
+
+        public static SkillDef DisabledSkill { get; private set; }
 
         public void Awake()
         {
+            Instance = this;
+
+            Unsafe = Config.Bind("Main", "Unsafe", false, "Unsafe mode will add extra skill slots for every character (including modded), for every skill which has at least 2 variants. Which may or may not be broken");
+
             DisabledSkill = ScriptableObject.CreateInstance<SkillDef>();
             DisabledSkill.skillName = "Disabled";
             DisabledSkill.skillNameToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_NAME;
@@ -56,36 +65,49 @@ namespace ExtendedLoadout
             On.RoR2.Projectile.ProjectileGrappleController.FlyState.DeductOwnerStock += LoaderHooks.ProjectileGrappleControllerDeductOwnerStockHook;
         }
 
-        private void FlyState_DeductOwnerStock(On.RoR2.Projectile.ProjectileGrappleController.FlyState.orig_DeductOwnerStock orig, EntityStates.BaseState self)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void SurvivorCatalog_Init(On.RoR2.SurvivorCatalog.orig_Init orig)
+        private static void SurvivorCatalog_Init(On.RoR2.SurvivorCatalog.orig_Init orig)
         {
             orig();
 
-            ExtendCommando();
-            ExtendHuntress();
-            ExtendEngi();
-            ExtendMage();
-            ExtendMerc();
-            ExtendTreebot();
-            ExtendLoader();
-            ExtendCroco();
+            try
+            {
+                if (Unsafe.Value)
+                {
+                    foreach (var survivor in SurvivorCatalog.allSurvivorDefs)
+                    {
+                        ExtendSurvivor(survivor.survivorIndex, survivor.name);
+                    }
+                }
+                else
+                {
+                    ExtendCommando();
+                    ExtendHuntress();
+                    ExtendEngi();
+                    ExtendMage();
+                    ExtendMerc();
+                    ExtendTreebot();
+                    ExtendLoader();
+                    ExtendCroco();
+                }
+            }
+            catch (Exception e)
+            {
+                InstanceLogger.LogWarning("Failed adding extra skill slots to survivors");
+                InstanceLogger.LogError(e);
+            }
         }
 
-        private void ExtendCommando() => ExtendSurvivor(SurvivorIndex.Commando, "Commando", addFisrt: false);    
-        private void ExtendHuntress() => ExtendSurvivor(SurvivorIndex.Huntress, "Huntress", addSecond: false);    
-        private void ExtendEngi() => ExtendSurvivor(SurvivorIndex.Engi, "Engi", addFisrt: false, addFourth: false);    
-        private void ExtendMage() => ExtendSurvivor(SurvivorIndex.Mage, "Mage", addThird: false);    
-        private void ExtendMerc() => ExtendSurvivor(SurvivorIndex.Merc, "Merc", addFisrt: false, addThird: false);    
-        private void ExtendTreebot() => ExtendSurvivor(SurvivorIndex.Treebot, "Treebot", addFisrt: false, addFourth: false);
-        private void ExtendLoader() => ExtendSurvivor(SurvivorIndex.Loader, "Loader", addFisrt: false, addFourth: false);
-        private void ExtendCroco() => ExtendSurvivor(SurvivorIndex.Croco, "Croco", addFisrt: false, addFourth: false);
+        private static void ExtendCommando() => ExtendSurvivor(SurvivorIndex.Commando, "Commando", addFisrt: false);    
+        private static void ExtendHuntress() => ExtendSurvivor(SurvivorIndex.Huntress, "Huntress", addSecond: false);    
+        private static void ExtendEngi() => ExtendSurvivor(SurvivorIndex.Engi, "Engi", addFisrt: false, addFourth: false);    
+        private static void ExtendMage() => ExtendSurvivor(SurvivorIndex.Mage, "Mage", addThird: false);    
+        private static void ExtendMerc() => ExtendSurvivor(SurvivorIndex.Merc, "Merc", addFisrt: false, addThird: false);    
+        private static void ExtendTreebot() => ExtendSurvivor(SurvivorIndex.Treebot, "Treebot", addFisrt: false, addFourth: false);
+        private static void ExtendLoader() => ExtendSurvivor(SurvivorIndex.Loader, "Loader", addFisrt: false, addFourth: false);
+        private static void ExtendCroco() => ExtendSurvivor(SurvivorIndex.Croco, "Croco", addFisrt: false, addFourth: false);
 
 
-        private void ExtendSurvivor(
+        private static void ExtendSurvivor(
             SurvivorIndex survivorIndex,
             string familyPrefix,
             bool addFisrt = true,
@@ -98,6 +120,12 @@ namespace ExtendedLoadout
             var bodyPrefab = survivor.bodyPrefab;
 
             var skillLocator = bodyPrefab.GetComponent<SkillLocator>();
+
+            if (bodyPrefab.GetComponent<ExtraSkillLocator>())
+            {
+                return;
+            }
+
             var extraSkillLocator = bodyPrefab.AddComponent<ExtraSkillLocator>();
 
             var additionalLength = 0;
@@ -105,29 +133,30 @@ namespace ExtendedLoadout
             {
                 var firstExtraSkill = CopySkill(bodyPrefab, familyPrefix, "First", skillLocator.primary);
                 extraSkillLocator.extraFirst = firstExtraSkill;
-                additionalLength++;
             }
 
             if (addSecond)
             {
                 var secondExtraSkill = CopySkill(bodyPrefab, familyPrefix, "Second", skillLocator.secondary);
                 extraSkillLocator.extraSecond = secondExtraSkill;
-                additionalLength++;
             }
 
             if (addThird)
             {
                 var thirdExtraSkill = CopySkill(bodyPrefab, familyPrefix, "Third", skillLocator.utility);
                 extraSkillLocator.extraThird = thirdExtraSkill;
-                additionalLength++;
             }
 
             if (addFourth)
             {
                 var fourthExtraSkill = CopySkill(bodyPrefab, familyPrefix, "Fourth", skillLocator.special);
                 extraSkillLocator.extraFourth = fourthExtraSkill;
-                additionalLength++;
             }
+
+            additionalLength += extraSkillLocator.extraFirst ? 1 : 0;
+            additionalLength += extraSkillLocator.extraSecond ? 1 : 0;
+            additionalLength += extraSkillLocator.extraThird ? 1 : 0;
+            additionalLength += extraSkillLocator.extraFourth ? 1 : 0;
 
             if (additionalLength == 0)
             {
@@ -139,36 +168,43 @@ namespace ExtendedLoadout
             Array.Resize(ref skillSlots, originalLength + additionalLength);
 
             var index = 0;
-            if (addFisrt)
+            if (extraSkillLocator.extraFirst)
             {
                 skillSlots[originalLength + index] = extraSkillLocator.extraFirst;
                 index++;
             }
-            if (addSecond)
+            if (extraSkillLocator.extraSecond)
             {
                 skillSlots[originalLength + index] = extraSkillLocator.extraSecond;
                 index++;
             }
-            if (addThird)
+            if (extraSkillLocator.extraThird)
             {
                 skillSlots[originalLength + index] = extraSkillLocator.extraThird;
                 index++;
             }
-            if (addFourth)
+            if (extraSkillLocator.extraFourth)
             {
                 skillSlots[originalLength + index] = extraSkillLocator.extraFourth;
-                index++;
             }
 
             var skillSlotsField = BodyCatalog.skillSlots;
             skillSlotsField[bodyIndex] = skillSlots;
         }
 
-        private GenericSkill CopySkill(GameObject bodyPrefab, string familyPrefix, string familySuffix, GenericSkill original)
+        private static GenericSkill CopySkill(GameObject bodyPrefab, string familyPrefix, string familySuffix, GenericSkill original)
         {
+            if (!original)
+            {
+                return null;
+            }
+            var originalSkillFamily = original._skillFamily;
+            if (!originalSkillFamily || originalSkillFamily.variants == null || originalSkillFamily.variants.Length < 2)
+            {
+                return null;
+            }
             var extraSkill = bodyPrefab.AddComponent<GenericSkill>();
             var extraSkillFamily = ScriptableObject.CreateInstance<SkillFamily>();
-            var originalSkillFamily = original._skillFamily;
 
             (extraSkillFamily as ScriptableObject).name = $"{familyPrefix}Extra{familySuffix}Family";
             var variants = new List<SkillFamily.Variant>() { new SkillFamily.Variant { skillDef = DisabledSkill, unlockableName = "" } };

@@ -1,11 +1,11 @@
 {
     "name": "ExtendedLoadout",
-    "version_number": "1.0.0",
+    "version_number": "1.1.0",
     "website_url": "https://github.com/KingEnderBrine/-RoR2-ExtendedLoadout",
     "description": "Allows you to use both skill variants on vanilla survivors",
     "dependencies": [
         "bbepis-BepInExPack-5.3.1",
-        "tristanmcpherson-R2API-2.5.7",
-        "KingEnderBrine-ExtraSkillSlots-1.2.1"
+        "tristanmcpherson-R2API-2.5.14",
+        "KingEnderBrine-ExtraSkillSlots-1.2.2"
     ]
 }
