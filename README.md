@@ -2,22 +2,23 @@
 Does what some people think `ExtraSkillSlots` does: adds an additional row of skills for vanilla characters, so you can use both skill variants.
 
 # Exceptions
-
 * `Engineer` - not adding an extra slot for turrets.
-
 * `MUL-T` - nothing is added.
-
 * `Captain` - nothing is added.
 
-# Unsafe mode
-Currently, all additional skill slots are added manually only for vanilla characters to ensure that everything works.
-`Unsafe` mode will add additional skill slots for every character (including modded) for every skill that has at least 2 variants.
-Some skills may and will not work correctly (e.g. Engineer's turrets), and I can't add support for everything, that is why this mode is called `Unsafe`.
+# Configs (and modded characters)
+By default configs are configured to add skills only for vanilla characters (with exceptions listed above).
+You can enable extra skills for modded characters in corresponding config sections.
 
 # Changelog
+**2.0.0**
+
+* Removed `Unsafe` config option.
+* Added config options for each character (including modded) that allow you to manually select which skills should be selected from the corresponding skill row. 
+
 **1.1.0**
 
-* Added `Unsafe` config option
+* Added `Unsafe` config option.
 
 **1.0.0**
 
