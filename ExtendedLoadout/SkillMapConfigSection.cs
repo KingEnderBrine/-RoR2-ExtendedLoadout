@@ -1,4 +1,5 @@
 ﻿using BepInEx.Configuration;
+using System.Text.RegularExpressions;
 
 namespace ExtendedLoadout
 {
@@ -22,9 +23,9 @@ Leaving option with only ""^"" will enable all skills for this row.
 
         public SkillMapConfigSection(ConfigFile file, string sectionName)
         {
-            SectionName = sectionName;
+            SectionName = RemoveInvalidCharacters(sectionName);
             
-            switch (sectionName)
+            switch (SectionName)
             {
                 case "Acrid": SetupRowSkills(); break;
                 case "Artificer": SetupRowSkills(); break;
@@ -41,11 +42,16 @@ Leaving option with only ""^"" will enable all skills for this row.
 
             void SetupRowSkills(string first = "^", string second = "^", string third = "^", string fourth = "^")
             {
-                FirstRowSkills = file.Bind(sectionName, nameof(FirstRowSkills), first, skillsDescription);
-                SecondRowSkills = file.Bind(sectionName, nameof(SecondRowSkills), second);
-                ThirdRowSkills = file.Bind(sectionName, nameof(ThirdRowSkills), third);
-                FourthRowSkills = file.Bind(sectionName, nameof(FourthRowSkills), fourth);
+                FirstRowSkills = file.Bind(SectionName, nameof(FirstRowSkills), first, skillsDescription);
+                SecondRowSkills = file.Bind(SectionName, nameof(SecondRowSkills), second);
+                ThirdRowSkills = file.Bind(SectionName, nameof(ThirdRowSkills), third);
+                FourthRowSkills = file.Bind(SectionName, nameof(FourthRowSkills), fourth);
             }
+        }
+
+        private string RemoveInvalidCharacters(string sectionName)
+        {
+            return Regex.Replace(sectionName, @"[=\n\t""'\\[\]]", "");
         }
     }
 }

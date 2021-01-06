@@ -11,6 +11,10 @@ By default configs are configured to add skills only for vanilla characters (wit
 You can enable extra skills for modded characters in corresponding config sections.
 
 # Changelog
+**2.0.2**
+
+* Fixed an issue when some symbols in character names causing errors.
+
 **2.0.1**
 
 * Readme update
