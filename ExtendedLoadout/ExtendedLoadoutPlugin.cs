@@ -1,8 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using ExtraSkillSlots;
-using R2API;
-using R2API.Utils;
 using RoR2;
 using RoR2.Skills;
 using System;
@@ -14,15 +12,18 @@ using UnityEngine;
 
 [module: UnverifiableCode]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+[assembly: R2API.Utils.ManualNetworkRegistration]
+[assembly: EnigmaticThunder.Util.ManualNetworkRegistration]
 namespace ExtendedLoadout
 {
-    [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.EveryoneNeedSameModVersion)]
-    [R2APISubmoduleDependency(nameof(CommandHelper), nameof(LoadoutAPI))]
     [BepInDependency("com.KingEnderBrine.ExtraSkillSlots", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency("com.bepis.r2api")]
-    [BepInPlugin("com.KingEnderBrine.ExtendedLoadout", "Extended Loadout", "2.0.2")]
+    [BepInPlugin(GUID, Name, Version)]
     public class ExtendedLoadoutPlugin : BaseUnityPlugin
     {
+        public const string GUID = "com.KingEnderBrine.ExtendedLoadout";
+        public const string Name = "Extended Loadout";
+        public const string Version = "2.1.0";
+
         private static ExtendedLoadoutPlugin Instance { get; set; }
         private static ManualLogSource InstanceLogger => Instance?.Logger;
 
@@ -43,8 +44,6 @@ namespace ExtendedLoadout
             DisabledSkill.baseRechargeInterval = 0;
             DisabledSkill.baseMaxStock = 1;
             DisabledSkill.rechargeStock = 0;
-            DisabledSkill.isBullets = false;
-            DisabledSkill.shootDelay = 0;
             DisabledSkill.beginSkillCooldownOnSkillEnd = false;
             DisabledSkill.rechargeStock = 2;
             DisabledSkill.stockToConsume = 0;
@@ -57,6 +56,10 @@ namespace ExtendedLoadout
             On.EntityStates.Treebot.Weapon.AimMortar2.KeyIsDown += TreebotHooks.AimMortar2KeyIsDown;
 
             On.RoR2.Projectile.ProjectileGrappleController.FlyState.DeductOwnerStock += LoaderHooks.ProjectileGrappleControllerDeductOwnerStockHook;
+
+            On.RoR2.Language.LoadStrings += LanguageConsts.OnLoadStrings;
+
+            NetworkModCompatibilityHelper.networkModList = NetworkModCompatibilityHelper.networkModList.Append($"{GUID};{Version}");
         }
 
         private static void SurvivorCatalog_Init(On.RoR2.SurvivorCatalog.orig_Init orig)
@@ -95,10 +98,10 @@ namespace ExtendedLoadout
             var extraSkillLocator = bodyPrefab.AddComponent<ExtraSkillLocator>();
 
             
-            extraSkillLocator.extraFirst = CopySkill(bodyPrefab, survivor.name, "First", skillLocator.primary, skillMap.FirstRowSkills.Value);
-            extraSkillLocator.extraSecond = CopySkill(bodyPrefab, survivor.name, "Second", skillLocator.secondary, skillMap.SecondRowSkills.Value);
-            extraSkillLocator.extraThird = CopySkill(bodyPrefab, survivor.name, "Third", skillLocator.utility, skillMap.ThirdRowSkills.Value);
-            extraSkillLocator.extraFourth = CopySkill(bodyPrefab, survivor.name, "Fourth", skillLocator.special, skillMap.FourthRowSkills.Value);
+            extraSkillLocator.extraFirst = CopySkill(bodyPrefab, survivor.cachedName, "First", skillLocator.primary, skillMap.FirstRowSkills.Value);
+            extraSkillLocator.extraSecond = CopySkill(bodyPrefab, survivor.cachedName, "Second", skillLocator.secondary, skillMap.SecondRowSkills.Value);
+            extraSkillLocator.extraThird = CopySkill(bodyPrefab, survivor.cachedName, "Third", skillLocator.utility, skillMap.ThirdRowSkills.Value);
+            extraSkillLocator.extraFourth = CopySkill(bodyPrefab, survivor.cachedName, "Fourth", skillLocator.special, skillMap.FourthRowSkills.Value);
 
             var additionalLength = 0;
             additionalLength += extraSkillLocator.extraFirst ? 1 : 0;
@@ -134,7 +137,7 @@ namespace ExtendedLoadout
             }
 
             var skillSlotsField = BodyCatalog.skillSlots;
-            skillSlotsField[bodyIndex] = skillSlots;
+            skillSlotsField[(int)bodyIndex] = skillSlots;
         }
 
         private static GenericSkill CopySkill(GameObject bodyPrefab, string familyPrefix, string familySuffix, GenericSkill original, string skillMap)
@@ -159,7 +162,7 @@ namespace ExtendedLoadout
             var extraSkillFamily = ScriptableObject.CreateInstance<SkillFamily>();
 
             (extraSkillFamily as ScriptableObject).name = $"{familyPrefix}Extra{familySuffix}Family";
-            var variants = new List<SkillFamily.Variant>() { new SkillFamily.Variant { skillDef = DisabledSkill, unlockableName = "" } };
+            var variants = new List<SkillFamily.Variant>() { new SkillFamily.Variant { skillDef = DisabledSkill, unlockableDef = null } };
             variants.AddRange(filteredVariants);
             extraSkillFamily.variants = variants.ToArray();
 
