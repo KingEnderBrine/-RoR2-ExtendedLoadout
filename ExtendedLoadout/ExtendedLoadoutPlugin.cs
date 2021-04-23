@@ -1,9 +1,8 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using ExtraSkillSlots;
-using R2API;
-using R2API.Utils;
 using RoR2;
+using RoR2.ContentManagement;
 using RoR2.Skills;
 using System;
 using System.Collections.Generic;
@@ -16,125 +15,80 @@ using UnityEngine;
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 namespace ExtendedLoadout
 {
-    [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.EveryoneNeedSameModVersion)]
-    [R2APISubmoduleDependency(nameof(CommandHelper), nameof(LoadoutAPI))]
     [BepInDependency("com.KingEnderBrine.ExtraSkillSlots", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency("com.bepis.r2api")]
-    [BepInPlugin("com.KingEnderBrine.ExtendedLoadout", "Extended Loadout", "2.0.2")]
-    public class ExtendedLoadoutPlugin : BaseUnityPlugin
+    [BepInPlugin(GUID, Name, Version)]
+    public class ExtendedLoadoutPlugin : BaseUnityPlugin, IContentPackProvider
     {
+        public const string GUID = "com.KingEnderBrine.ExtendedLoadout";
+        public const string Name = "Extended Loadout";
+        public const string Version = "2.1.0";
+
         private static ExtendedLoadoutPlugin Instance { get; set; }
         private static ManualLogSource InstanceLogger => Instance?.Logger;
 
         public static SkillDef DisabledSkill { get; private set; }
 
-        public void Awake()
+        public string identifier => "ExtendedLoadout";
+        private ContentPack contentPack;
+        private readonly Dictionary<SurvivorDef, SkillFamily[]> cachedFamilies = new Dictionary<SurvivorDef, SkillFamily[]>();
+
+
+        private void Awake()
         {
             Instance = this;
 
-            DisabledSkill = ScriptableObject.CreateInstance<SkillDef>();
-            DisabledSkill.skillName = "Disabled";
-            DisabledSkill.skillNameToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_NAME;
-            DisabledSkill.skillDescriptionToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_DESCRIPTION;
-            DisabledSkill.icon = LoadoutAPI.CreateSkinIcon(Color.black, Color.black, Color.black, Color.black, Color.red);
-            DisabledSkill.activationStateMachineName = "Weapon";
-            DisabledSkill.activationState = new EntityStates.SerializableEntityStateType(typeof(EntityStates.Idle));
-            DisabledSkill.interruptPriority = EntityStates.InterruptPriority.Any;
-            DisabledSkill.baseRechargeInterval = 0;
-            DisabledSkill.baseMaxStock = 1;
-            DisabledSkill.rechargeStock = 0;
-            DisabledSkill.isBullets = false;
-            DisabledSkill.shootDelay = 0;
-            DisabledSkill.beginSkillCooldownOnSkillEnd = false;
-            DisabledSkill.rechargeStock = 2;
-            DisabledSkill.stockToConsume = 0;
-            DisabledSkill.isCombatSkill = false;
+            ContentManager.collectContentPackProviders += CollectContentPackProviders;
 
-            LoadoutAPI.AddSkillDef(DisabledSkill);
-
-            On.RoR2.SurvivorCatalog.Init += SurvivorCatalog_Init;
-
+            On.RoR2.Language.LoadStrings += LanguageConsts.OnLoadStrings;
             On.EntityStates.Treebot.Weapon.AimMortar2.KeyIsDown += TreebotHooks.AimMortar2KeyIsDown;
-
             On.RoR2.Projectile.ProjectileGrappleController.FlyState.DeductOwnerStock += LoaderHooks.ProjectileGrappleControllerDeductOwnerStockHook;
+
+            NetworkModCompatibilityHelper.networkModList = NetworkModCompatibilityHelper.networkModList.Append($"{GUID};{Version}");
         }
 
-        private static void SurvivorCatalog_Init(On.RoR2.SurvivorCatalog.orig_Init orig)
+        private void CollectContentPackProviders(ContentManager.AddContentPackProviderDelegate addContentPackProvider)
         {
-            orig();
-
-
-            foreach (var survivor in SurvivorCatalog.allSurvivorDefs)
-            {
-                try
-                {
-                    ExtendSurvivor(survivor.survivorIndex);
-                }
-                catch (Exception e)
-                {
-                    InstanceLogger.LogWarning($"Failed adding extra skill slots for \"{Language.english.GetLocalizedStringByToken(survivor.displayNameToken)}\"");
-                    InstanceLogger.LogError(e);
-                }
-            }
+            addContentPackProvider(this);
         }
 
-        private static void ExtendSurvivor(SurvivorIndex survivorIndex)
+        private static SkillFamily[] ExtendSurvivor(SurvivorDef survivorDef)
         {
-            var survivor = SurvivorCatalog.GetSurvivorDef(survivorIndex);
-            var bodyIndex = SurvivorCatalog.GetBodyIndexFromSurvivorIndex(survivorIndex);
-            var bodyPrefab = survivor.bodyPrefab;
-
-            var skillLocator = bodyPrefab.GetComponent<SkillLocator>();
-
-            if (bodyPrefab.GetComponent<ExtraSkillLocator>())
+            var survivorName = ((ScriptableObject)survivorDef).name;
+            try
             {
-                return;
+                var bodyPrefab = survivorDef.bodyPrefab;
+
+                if (bodyPrefab.GetComponent<ExtraSkillLocator>())
+                {
+                    return Array.Empty<SkillFamily>();
+                }
+
+                var skillMap = new SkillMapConfigSection(Instance.Config, survivorName);
+
+                var skillLocator = bodyPrefab.GetComponent<SkillLocator>();
+                var extraSkillLocator = bodyPrefab.AddComponent<ExtraSkillLocator>();
+
+                extraSkillLocator.extraFirst = CopySkill(bodyPrefab, survivorName, "First", skillLocator.primary, skillMap.FirstRowSkills.Value);
+                extraSkillLocator.extraSecond = CopySkill(bodyPrefab, survivorName, "Second", skillLocator.secondary, skillMap.SecondRowSkills.Value);
+                extraSkillLocator.extraThird = CopySkill(bodyPrefab, survivorName, "Third", skillLocator.utility, skillMap.ThirdRowSkills.Value);
+                extraSkillLocator.extraFourth = CopySkill(bodyPrefab, survivorName, "Fourth", skillLocator.special, skillMap.FourthRowSkills.Value);
+
+                var families = new List<SkillFamily>();
+
+                if (extraSkillLocator.extraFirst) families.Add(extraSkillLocator.extraFirst.skillFamily);
+                if (extraSkillLocator.extraSecond) families.Add(extraSkillLocator.extraSecond.skillFamily);
+                if (extraSkillLocator.extraThird) families.Add(extraSkillLocator.extraThird.skillFamily);
+                if (extraSkillLocator.extraFourth) families.Add(extraSkillLocator.extraFourth.skillFamily);
+
+                return families.ToArray();
             }
-            var skillMap = new SkillMapConfigSection(Instance.Config, Language.english.GetLocalizedStringByToken(survivor.displayNameToken));
-
-            var extraSkillLocator = bodyPrefab.AddComponent<ExtraSkillLocator>();
-
-            
-            extraSkillLocator.extraFirst = CopySkill(bodyPrefab, survivor.name, "First", skillLocator.primary, skillMap.FirstRowSkills.Value);
-            extraSkillLocator.extraSecond = CopySkill(bodyPrefab, survivor.name, "Second", skillLocator.secondary, skillMap.SecondRowSkills.Value);
-            extraSkillLocator.extraThird = CopySkill(bodyPrefab, survivor.name, "Third", skillLocator.utility, skillMap.ThirdRowSkills.Value);
-            extraSkillLocator.extraFourth = CopySkill(bodyPrefab, survivor.name, "Fourth", skillLocator.special, skillMap.FourthRowSkills.Value);
-
-            var additionalLength = 0;
-            additionalLength += extraSkillLocator.extraFirst ? 1 : 0;
-            additionalLength += extraSkillLocator.extraSecond ? 1 : 0;
-            additionalLength += extraSkillLocator.extraThird ? 1 : 0;
-            additionalLength += extraSkillLocator.extraFourth ? 1 : 0;
-
-            if (additionalLength == 0)
+            catch (Exception e)
             {
-                return;
-            }
-
-            var skillSlots = BodyCatalog.GetBodyPrefabSkillSlots(bodyIndex);
-            var originalLength = skillSlots.Length;
-            Array.Resize(ref skillSlots, originalLength + additionalLength);
-
-            var index = 0;
-            if (extraSkillLocator.extraFirst)
-            {
-                skillSlots[originalLength + index++] = extraSkillLocator.extraFirst;
-            }
-            if (extraSkillLocator.extraSecond)
-            {
-                skillSlots[originalLength + index++] = extraSkillLocator.extraSecond;
-            }
-            if (extraSkillLocator.extraThird)
-            {
-                skillSlots[originalLength + index++] = extraSkillLocator.extraThird;
-            }
-            if (extraSkillLocator.extraFourth)
-            {
-                skillSlots[originalLength + index++] = extraSkillLocator.extraFourth;
+                InstanceLogger.LogWarning($"Failed adding extra skill slots for \"{survivorName}\"");
+                InstanceLogger.LogError(e);
             }
 
-            var skillSlotsField = BodyCatalog.skillSlots;
-            skillSlotsField[bodyIndex] = skillSlots;
+            return Array.Empty<SkillFamily>();
         }
 
         private static GenericSkill CopySkill(GameObject bodyPrefab, string familyPrefix, string familySuffix, GenericSkill original, string skillMap)
@@ -143,6 +97,7 @@ namespace ExtendedLoadout
             {
                 return null;
             }
+
             var originalSkillFamily = original._skillFamily;
             if (!originalSkillFamily || originalSkillFamily.variants == null || originalSkillFamily.variants.Length < 2)
             {
@@ -159,11 +114,10 @@ namespace ExtendedLoadout
             var extraSkillFamily = ScriptableObject.CreateInstance<SkillFamily>();
 
             (extraSkillFamily as ScriptableObject).name = $"{familyPrefix}Extra{familySuffix}Family";
-            var variants = new List<SkillFamily.Variant>() { new SkillFamily.Variant { skillDef = DisabledSkill, unlockableName = "" } };
+            var variants = new List<SkillFamily.Variant>() { new SkillFamily.Variant { skillDef = DisabledSkill } };
             variants.AddRange(filteredVariants);
             extraSkillFamily.variants = variants.ToArray();
 
-            LoadoutAPI.AddSkillFamily(extraSkillFamily);
             extraSkill._skillFamily = extraSkillFamily;
 
             return extraSkill;
@@ -177,6 +131,66 @@ namespace ExtendedLoadout
             var indices = (isBlacklist ? trimmedMap.Substring(1) : trimmedMap).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(el => int.Parse(el.Trim()));
 
             return variants.Where((el, index) => isBlacklist ^ indices.Contains(index));
+        }
+
+        System.Collections.IEnumerator IContentPackProvider.LoadStaticContentAsync(LoadStaticContentAsyncArgs args)
+        {
+            contentPack = new ContentPack();
+
+            DisabledSkill = ScriptableObject.CreateInstance<SkillDef>();
+            DisabledSkill.skillName = "Disabled";
+            ((ScriptableObject)DisabledSkill).name = DisabledSkill.skillName;
+            DisabledSkill.skillNameToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_NAME;
+            DisabledSkill.skillDescriptionToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_DESCRIPTION;
+            DisabledSkill.icon = Sprite.Create(Texture2D.blackTexture, new Rect(0, 0, 1, 1), new Vector2(0, 0));// LoadoutAPI.CreateSkinIcon(Color.black, Color.black, Color.black, Color.black, Color.red);
+            DisabledSkill.activationStateMachineName = "Weapon";
+            DisabledSkill.activationState = new EntityStates.SerializableEntityStateType(typeof(EntityStates.Idle));
+            DisabledSkill.interruptPriority = EntityStates.InterruptPriority.Any;
+            DisabledSkill.baseRechargeInterval = 0;
+            DisabledSkill.baseMaxStock = 1;
+            DisabledSkill.rechargeStock = 0;
+            DisabledSkill.beginSkillCooldownOnSkillEnd = false;
+            DisabledSkill.rechargeStock = 1;
+            DisabledSkill.stockToConsume = 2;
+            DisabledSkill.isCombatSkill = false;
+
+            contentPack.skillDefs.Add(new[] { DisabledSkill });
+
+            args.ReportProgress(0.99F);
+            yield break;
+        }
+
+        System.Collections.IEnumerator IContentPackProvider.GenerateContentPackAsync(GetContentPackAsyncArgs args)
+        {
+            ContentPack.Copy(contentPack, args.output);
+
+            foreach (var loadInfo in args.peerLoadInfos)
+            {
+                foreach (var survivorDef in loadInfo.previousContentPack.survivorDefs)
+                {
+                    if (!cachedFamilies.TryGetValue(survivorDef, out var families))
+                    {
+                        cachedFamilies[survivorDef] = families = ExtendSurvivor(survivorDef);
+                    }
+
+                    if (families.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    args.output.skillFamilies.Add(families);
+                }
+            }
+
+            args.ReportProgress(1);
+            yield break;
+        }
+
+        System.Collections.IEnumerator IContentPackProvider.FinalizeAsync(FinalizeAsyncArgs args)
+        {
+            cachedFamilies.Clear();
+            args.ReportProgress(1);
+            yield break;
         }
     }
 }

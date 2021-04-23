@@ -27,16 +27,18 @@ Leaving option with only ""^"" will enable all skills for this row.
             
             switch (SectionName)
             {
-                case "Acrid": SetupRowSkills(); break;
-                case "Artificer": SetupRowSkills(); break;
+                case "Croco": SetupRowSkills(); break;
+                case "Mage": SetupRowSkills(); break;
                 case "Captain": SetupRowSkills(); break;
                 case "Commando": SetupRowSkills(); break;
-                case "Engineer": SetupRowSkills(fourth: ""); break;
+                case "Engi": SetupRowSkills(fourth: ""); break;
                 case "Huntress": SetupRowSkills(); break;
                 case "Loader": SetupRowSkills(); break;
-                case "Mercenary": SetupRowSkills(); break;
-                case "MUL-T": SetupRowSkills(first: ""); break;
-                case "REX": SetupRowSkills(); break;
+                case "Merc": SetupRowSkills(); break;
+                case "Toolbot": SetupRowSkills(first: ""); break;
+                case "Treebot": SetupRowSkills(); break;
+                case "Bandit2": SetupRowSkills(first: ""); break;
+                case "Heretic": SetupRowSkills(); break;
                 default: SetupRowSkills("", "", "", ""); break;
             }
 

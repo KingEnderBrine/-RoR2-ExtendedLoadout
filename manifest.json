@@ -1,11 +1,10 @@
 {
     "name": "ExtendedLoadout",
-    "version_number": "2.0.2",
+    "version_number": "2.1.0",
     "website_url": "https://github.com/KingEnderBrine/-RoR2-ExtendedLoadout",
     "description": "Allows you to use 2 skill variants simultaneously",
     "dependencies": [
         "bbepis-BepInExPack-5.3.1",
-        "tristanmcpherson-R2API-2.5.14",
-        "KingEnderBrine-ExtraSkillSlots-1.2.2"
+        "KingEnderBrine-ExtraSkillSlots-1.4.1"
     ]
 }
