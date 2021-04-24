@@ -10,6 +10,7 @@ using System.Linq;
 using System.Security;
 using System.Security.Permissions;
 using UnityEngine;
+using Zio;
 
 [module: UnverifiableCode]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
@@ -21,7 +22,7 @@ namespace ExtendedLoadout
     {
         public const string GUID = "com.KingEnderBrine.ExtendedLoadout";
         public const string Name = "Extended Loadout";
-        public const string Version = "2.1.0";
+        public const string Version = "2.1.2";
 
         private static ExtendedLoadoutPlugin Instance { get; set; }
         private static ManualLogSource InstanceLogger => Instance?.Logger;
@@ -31,6 +32,7 @@ namespace ExtendedLoadout
         public string identifier => "ExtendedLoadout";
         private ContentPack contentPack;
         private readonly Dictionary<SurvivorDef, SkillFamily[]> cachedFamilies = new Dictionary<SurvivorDef, SkillFamily[]>();
+        private static Language english;
 
 
         private void Awake()
@@ -53,7 +55,7 @@ namespace ExtendedLoadout
 
         private static SkillFamily[] ExtendSurvivor(SurvivorDef survivorDef)
         {
-            var survivorName = ((ScriptableObject)survivorDef).name;
+            var survivorName = survivorDef.displayNameToken;
             try
             {
                 var bodyPrefab = survivorDef.bodyPrefab;
@@ -63,7 +65,7 @@ namespace ExtendedLoadout
                     return Array.Empty<SkillFamily>();
                 }
 
-                var skillMap = new SkillMapConfigSection(Instance.Config, survivorName);
+                var skillMap = new SkillMapConfigSection(Instance.Config, english.GetLocalizedStringByToken(survivorDef.displayNameToken));
 
                 var skillLocator = bodyPrefab.GetComponent<SkillLocator>();
                 var extraSkillLocator = bodyPrefab.AddComponent<ExtraSkillLocator>();
@@ -156,8 +158,22 @@ namespace ExtendedLoadout
 
             contentPack.skillDefs.Add(new[] { DisabledSkill });
 
+            args.ReportProgress(0.90F);
+
+            //Early load of language to get display names
+            Language.collectLanguageRootFolders += CollectRoRLanguageFolder;
+            Language.BuildLanguagesFromFolders();
+            english = Language.GetOrCreateLanguage("en");
+            english.LoadStrings();
+            Language.collectLanguageRootFolders -= CollectRoRLanguageFolder;
+
             args.ReportProgress(0.99F);
             yield break;
+        }
+
+        private static void CollectRoRLanguageFolder(List<DirectoryEntry> list)
+        {
+            list.Add(RoR2Application.fileSystem.GetDirectoryEntry("/Language/"));
         }
 
         System.Collections.IEnumerator IContentPackProvider.GenerateContentPackAsync(GetContentPackAsyncArgs args)
@@ -188,7 +204,11 @@ namespace ExtendedLoadout
 
         System.Collections.IEnumerator IContentPackProvider.FinalizeAsync(FinalizeAsyncArgs args)
         {
+            english.UnloadStrings();
+            english = null;
+
             cachedFamilies.Clear();
+
             args.ReportProgress(1);
             yield break;
         }

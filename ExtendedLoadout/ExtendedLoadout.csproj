@@ -42,6 +42,9 @@
     <Reference Include="UnityEngine.Networking">
       <HintPath>..\..\CommonLibs\UnityEngine.Networking.dll</HintPath>
     </Reference>
+    <Reference Include="Zio">
+      <HintPath>C:\Users\Admin\Desktop\F\RoR2 Modding\CommonLibs\Zio.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

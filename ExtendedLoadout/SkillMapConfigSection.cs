@@ -27,17 +27,17 @@ Leaving option with only ""^"" will enable all skills for this row.
             
             switch (SectionName)
             {
-                case "Croco": SetupRowSkills(); break;
-                case "Mage": SetupRowSkills(); break;
+                case "Acrid": SetupRowSkills(); break;
+                case "Artificer": SetupRowSkills(); break;
                 case "Captain": SetupRowSkills(); break;
                 case "Commando": SetupRowSkills(); break;
-                case "Engi": SetupRowSkills(fourth: ""); break;
+                case "Engineer": SetupRowSkills(fourth: ""); break;
                 case "Huntress": SetupRowSkills(); break;
                 case "Loader": SetupRowSkills(); break;
-                case "Merc": SetupRowSkills(); break;
-                case "Toolbot": SetupRowSkills(first: ""); break;
-                case "Treebot": SetupRowSkills(); break;
-                case "Bandit2": SetupRowSkills(first: ""); break;
+                case "Mercenary": SetupRowSkills(); break;
+                case "MUL-T": SetupRowSkills(first: ""); break;
+                case "Rex": SetupRowSkills(); break;
+                case "Bandit": SetupRowSkills(first: ""); break;
                 case "Heretic": SetupRowSkills(); break;
                 default: SetupRowSkills("", "", "", ""); break;
             }
@@ -53,7 +53,7 @@ Leaving option with only ""^"" will enable all skills for this row.
 
         private string RemoveInvalidCharacters(string sectionName)
         {
-            return Regex.Replace(sectionName, @"[=\n\t""'\\[\]]", "");
+            return Regex.Replace(sectionName, @"[=\n\t""'\\[\]]", "").Trim();
         }
     }
 }

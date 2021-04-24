@@ -5,12 +5,20 @@ Does what some people think `ExtraSkillSlots` does: adds an additional row of sk
 * `Engineer` - not adding an extra slot for turrets.
 * `MUL-T` - nothing is added.
 * `Captain` - nothing is added.
+* `Bandit` - not adding an extra slot for primary skill.
 
 # Configs (and modded characters)
 By default configs are configured to add skills only for vanilla characters (with exceptions listed above).
 You can enable extra skills for modded characters in corresponding config sections.
 
+
+If you want to support me, [you can do this here](https://www.buymeacoffee.com/KingEnderBrine)
+
 # Changelog
+**2.1.1**
+
+* Gone back to using display name instead of internals because that didn't work out for modded character. (Had to do hacky stuff to make it work, but who cares)
+
 **2.1.0**
 
 * Fixed for Anniversary Update.
