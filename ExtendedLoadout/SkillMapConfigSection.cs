@@ -24,7 +24,7 @@ Leaving option with only ""^"" will enable all skills for this row.
         public SkillMapConfigSection(ConfigFile file, string sectionName)
         {
             SectionName = RemoveInvalidCharacters(sectionName);
-            
+
             switch (SectionName)
             {
                 case "Acrid": SetupRowSkills(); break;
@@ -39,6 +39,8 @@ Leaving option with only ""^"" will enable all skills for this row.
                 case "Rex": SetupRowSkills(); break;
                 case "Bandit": SetupRowSkills(first: ""); break;
                 case "Heretic": SetupRowSkills(); break;
+                case "Railgunner": SetupRowSkills(); break;
+                case "「V??oid Fiend』": SetupRowSkills(); break;
                 default: SetupRowSkills("", "", "", ""); break;
             }
 

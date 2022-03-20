@@ -6,14 +6,14 @@ using RoR2.ContentManagement;
 using RoR2.Skills;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Security;
+using System.Reflection;
 using System.Security.Permissions;
 using UnityEngine;
-using Zio;
 
-[module: UnverifiableCode]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+[assembly: AssemblyVersion(ExtendedLoadout.ExtendedLoadoutPlugin.Version)]
 namespace ExtendedLoadout
 {
     [BepInDependency("com.KingEnderBrine.ExtraSkillSlots", BepInDependency.DependencyFlags.HardDependency)]
@@ -22,7 +22,7 @@ namespace ExtendedLoadout
     {
         public const string GUID = "com.KingEnderBrine.ExtendedLoadout";
         public const string Name = "Extended Loadout";
-        public const string Version = "2.1.2";
+        public const string Version = "2.2.0";
 
         private static ExtendedLoadoutPlugin Instance { get; set; }
         private static ManualLogSource InstanceLogger => Instance?.Logger;
@@ -32,20 +32,32 @@ namespace ExtendedLoadout
         public string identifier => "ExtendedLoadout";
         private ContentPack contentPack;
         private readonly Dictionary<SurvivorDef, SkillFamily[]> cachedFamilies = new Dictionary<SurvivorDef, SkillFamily[]>();
-        private static Language english;
+        private Language english;
 
-
-        private void Awake()
+        private void Start()
         {
             Instance = this;
 
+            NetworkModCompatibilityHelper.networkModList = NetworkModCompatibilityHelper.networkModList.Append($"{GUID};{Version}");
             ContentManager.collectContentPackProviders += CollectContentPackProviders;
 
-            On.RoR2.Language.LoadStrings += LanguageConsts.OnLoadStrings;
             On.EntityStates.Treebot.Weapon.AimMortar2.KeyIsDown += TreebotHooks.AimMortar2KeyIsDown;
             On.RoR2.Projectile.ProjectileGrappleController.FlyState.DeductOwnerStock += LoaderHooks.ProjectileGrappleControllerDeductOwnerStockHook;
 
-            NetworkModCompatibilityHelper.networkModList = NetworkModCompatibilityHelper.networkModList.Append($"{GUID};{Version}");
+#warning Fix for language, remove when next update is out
+            if (RoR2Application.GetBuildId() == "1.2.2.0")
+            {
+                On.RoR2.Language.SetFolders += LanguageSetFolders;
+            }
+            else
+            {
+                Language.collectLanguageRootFolders += CollectLanguageRootFolders;
+            }
+        }
+
+        private void CollectLanguageRootFolders(List<string> folders)
+        {
+            folders.Add(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Info.Location), "Language"));
         }
 
         private void CollectContentPackProviders(ContentManager.AddContentPackProviderDelegate addContentPackProvider)
@@ -53,7 +65,7 @@ namespace ExtendedLoadout
             addContentPackProvider(this);
         }
 
-        private static SkillFamily[] ExtendSurvivor(SurvivorDef survivorDef)
+        private SkillFamily[] ExtendSurvivor(SurvivorDef survivorDef)
         {
             var survivorName = survivorDef.displayNameToken;
             try
@@ -100,7 +112,7 @@ namespace ExtendedLoadout
                 return null;
             }
 
-            var originalSkillFamily = original._skillFamily;
+            var originalSkillFamily = original.skillFamily;
             if (!originalSkillFamily || originalSkillFamily.variants == null || originalSkillFamily.variants.Length < 2)
             {
                 return null;
@@ -113,6 +125,7 @@ namespace ExtendedLoadout
             }
 
             var extraSkill = bodyPrefab.AddComponent<GenericSkill>();
+            extraSkill.skillName = $"Extra{familySuffix}";
             var extraSkillFamily = ScriptableObject.CreateInstance<SkillFamily>();
 
             (extraSkillFamily as ScriptableObject).name = $"{familyPrefix}Extra{familySuffix}Family";
@@ -144,7 +157,7 @@ namespace ExtendedLoadout
             ((ScriptableObject)DisabledSkill).name = DisabledSkill.skillName;
             DisabledSkill.skillNameToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_NAME;
             DisabledSkill.skillDescriptionToken = LanguageConsts.EXTENDED_LOADOUT_SKILL_DISABLED_DESCRIPTION;
-            DisabledSkill.icon = Sprite.Create(Texture2D.blackTexture, new Rect(0, 0, 1, 1), new Vector2(0, 0));// LoadoutAPI.CreateSkinIcon(Color.black, Color.black, Color.black, Color.black, Color.red);
+            DisabledSkill.icon = Sprite.Create(Texture2D.blackTexture, new Rect(0, 0, 1, 1), new Vector2(0, 0));
             DisabledSkill.activationStateMachineName = "Weapon";
             DisabledSkill.activationState = new EntityStates.SerializableEntityStateType(typeof(EntityStates.Idle));
             DisabledSkill.interruptPriority = EntityStates.InterruptPriority.Any;
@@ -162,18 +175,18 @@ namespace ExtendedLoadout
 
             //Early load of language to get display names
             Language.collectLanguageRootFolders += CollectRoRLanguageFolder;
-            Language.BuildLanguagesFromFolders();
-            english = Language.GetOrCreateLanguage("en");
+            english = new Language("en");
+            english.SetFolders(Language.GetLanguageRootFolders().SelectMany(el => Directory.EnumerateDirectories(el, "en")));
             english.LoadStrings();
             Language.collectLanguageRootFolders -= CollectRoRLanguageFolder;
 
-            args.ReportProgress(0.99F);
+            args.ReportProgress(1F);
             yield break;
         }
 
-        private static void CollectRoRLanguageFolder(List<DirectoryEntry> list)
+        private static void CollectRoRLanguageFolder(List<string> list)
         {
-            list.Add(RoR2Application.fileSystem.GetDirectoryEntry("/Language/"));
+            list.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.streamingAssetsPath, "Language")));
         }
 
         System.Collections.IEnumerator IContentPackProvider.GenerateContentPackAsync(GetContentPackAsyncArgs args)
@@ -211,6 +224,13 @@ namespace ExtendedLoadout
 
             args.ReportProgress(1);
             yield break;
+        }
+
+#warning Fix for language, remove when next update is out
+        private void LanguageSetFolders(On.RoR2.Language.orig_SetFolders orig, Language self, IEnumerable<string> newFolders)
+        {
+            var dirs = Directory.EnumerateDirectories(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Info.Location), "Language"), self.name);
+            orig(self, newFolders.Union(dirs));
         }
     }
 }

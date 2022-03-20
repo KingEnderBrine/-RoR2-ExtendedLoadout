@@ -327,10 +327,3 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
-
-# Ignore Library files
-libs/*.dll
-libs/*.xml
-
-BuildZip.bat
-*.zip

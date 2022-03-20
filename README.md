@@ -15,6 +15,10 @@ You can enable extra skills for modded characters in corresponding config sectio
 If you want to support me, [you can do this here](https://www.buymeacoffee.com/KingEnderBrine)
 
 # Changelog
+**2.2.0**
+
+* Fixes for `Survivor of the Void` update.
+
 **2.1.1**
 
 * Gone back to using display name instead of internals because that didn't work out for modded character. (Had to do hacky stuff to make it work, but who cares)
