@@ -16,13 +16,13 @@ using UnityEngine;
 [assembly: AssemblyVersion(ExtendedLoadout.ExtendedLoadoutPlugin.Version)]
 namespace ExtendedLoadout
 {
-    [BepInDependency("com.KingEnderBrine.ExtraSkillSlots", BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency(ExtraSkillSlotsPlugin.GUID, BepInDependency.DependencyFlags.HardDependency)]
     [BepInPlugin(GUID, Name, Version)]
     public class ExtendedLoadoutPlugin : BaseUnityPlugin, IContentPackProvider
     {
         public const string GUID = "com.KingEnderBrine.ExtendedLoadout";
         public const string Name = "Extended Loadout";
-        public const string Version = "2.2.0";
+        public const string Version = "2.2.1";
 
         private static ExtendedLoadoutPlugin Instance { get; set; }
         private static ManualLogSource InstanceLogger => Instance?.Logger;
@@ -44,15 +44,7 @@ namespace ExtendedLoadout
             On.EntityStates.Treebot.Weapon.AimMortar2.KeyIsDown += TreebotHooks.AimMortar2KeyIsDown;
             On.RoR2.Projectile.ProjectileGrappleController.FlyState.DeductOwnerStock += LoaderHooks.ProjectileGrappleControllerDeductOwnerStockHook;
 
-#warning Fix for language, remove when next update is out
-            if (RoR2Application.GetBuildId() == "1.2.2.0")
-            {
-                On.RoR2.Language.SetFolders += LanguageSetFolders;
-            }
-            else
-            {
-                Language.collectLanguageRootFolders += CollectLanguageRootFolders;
-            }
+            Language.collectLanguageRootFolders += CollectLanguageRootFolders;
         }
 
         private void CollectLanguageRootFolders(List<string> folders)
@@ -71,13 +63,17 @@ namespace ExtendedLoadout
             try
             {
                 var bodyPrefab = survivorDef.bodyPrefab;
+                if (survivorName == null)
+                {
+                    survivorName = bodyPrefab.GetComponent<CharacterBody>().baseNameToken;
+                }
 
                 if (bodyPrefab.GetComponent<ExtraSkillLocator>())
                 {
                     return Array.Empty<SkillFamily>();
                 }
 
-                var skillMap = new SkillMapConfigSection(Instance.Config, english.GetLocalizedStringByToken(survivorDef.displayNameToken));
+                var skillMap = new SkillMapConfigSection(Instance.Config, english.GetLocalizedStringByToken(survivorName));
 
                 var skillLocator = bodyPrefab.GetComponent<SkillLocator>();
                 var extraSkillLocator = bodyPrefab.AddComponent<ExtraSkillLocator>();
@@ -224,13 +220,6 @@ namespace ExtendedLoadout
 
             args.ReportProgress(1);
             yield break;
-        }
-
-#warning Fix for language, remove when next update is out
-        private void LanguageSetFolders(On.RoR2.Language.orig_SetFolders orig, Language self, IEnumerable<string> newFolders)
-        {
-            var dirs = Directory.EnumerateDirectories(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Info.Location), "Language"), self.name);
-            orig(self, newFolders.Union(dirs));
         }
     }
 }
