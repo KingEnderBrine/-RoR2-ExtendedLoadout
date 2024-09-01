@@ -22,7 +22,7 @@ namespace ExtendedLoadout
     {
         public const string GUID = "com.KingEnderBrine.ExtendedLoadout";
         public const string Name = "Extended Loadout";
-        public const string Version = "2.2.1";
+        public const string Version = "2.3.0";
 
         private static ExtendedLoadoutPlugin Instance { get; set; }
         private static ManualLogSource InstanceLogger => Instance?.Logger;
@@ -170,19 +170,12 @@ namespace ExtendedLoadout
             args.ReportProgress(0.90F);
 
             //Early load of language to get display names
-            Language.collectLanguageRootFolders += CollectRoRLanguageFolder;
             english = new Language("en");
-            english.SetFolders(Language.GetLanguageRootFolders().SelectMany(el => Directory.EnumerateDirectories(el, "en")));
+            english.SetFolders(Language.GetLanguageRootFolders().Where(d => Directory.Exists(d)).SelectMany(el => Directory.EnumerateDirectories(el, "en")));
             english.LoadStrings();
-            Language.collectLanguageRootFolders -= CollectRoRLanguageFolder;
 
             args.ReportProgress(1F);
             yield break;
-        }
-
-        private static void CollectRoRLanguageFolder(List<string> list)
-        {
-            list.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.streamingAssetsPath, "Language")));
         }
 
         System.Collections.IEnumerator IContentPackProvider.GenerateContentPackAsync(GetContentPackAsyncArgs args)

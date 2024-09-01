@@ -1,3 +1,7 @@
+**2.3.0**
+
+* Fixes for `Seekers of the Storm` update.
+
 **2.2.1**
 
 * Fixed configs for some modded survivors being missing.
